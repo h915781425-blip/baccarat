@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>百家乐/三张牌游戏测试版</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  
+  <style>
+    /* 将小程序的 rpx 转化为响应式的 vw/vh 适配移动端 */
+    :root {
+      --rpx: 0.1333vw;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { background-color: #0b1c14; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+
+    .page-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; padding-top: calc(10.6vw + 10px); box-sizing: border-box; }
+    .game-wrapper { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 2.6vw; box-sizing: border-box; position: relative; }
+    .safe-bottom-console { flex-shrink: 0; background: #08140e; border-top: calc(0.5vw + 1px) solid #1a3c26; padding: 2vw 3.3vw calc(env(safe-area-inset-bottom) + 2vw) 3.3vw; }
+
+    /* 中心对齐黑科技 */
+    .center-text { display: flex !important; justify-content: center !important; align-items: center !important; width: 100%; height: 100%; line-height: 1 !important; text-align: center; }
+
+    /* 顶部栏 */
+    .header-bar { display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+    .header-left { display: flex; align-items: center; color: #f1c40f; font-weight: bold; font-size: 4.2vw; background: rgba(0,0,0,0.4); padding: 1.3vw 2.6vw; border-radius: 4vw; cursor: pointer; }
+    .add-btn { background: #f1c40f; color: #000; width: 5.8vw; height: 5.8vw; border-radius: 50%; margin-left: 2vw; font-size: 4.2vw; font-weight: bold; display: flex; justify-content: center; align-items: center; line-height: 1;}
+    .round-badge { color: #fff; background: rgba(255,255,255,0.2); padding: 0.8vw 3.2vw; border-radius: 2.6vw; font-size: 3.4vw; }
+
+    /* 牌桌区 */
+    .card-table-vertical { background: #113122; border: 1px solid #a3b18a; border-radius: 1.6vw; padding: 2vw; transition: opacity 0.3s; margin-bottom: 2vw;}
+    .side-title { font-size: 3.4vw; font-weight: bold; margin-bottom: 1.6vw; display: flex; justify-content: space-between;}
+    .dealer-title { color: #fff; }
+    .player-title { color: #5bc0eb; }
+    .hand-badge { color: #f1c40f; font-size: 3.2vw; background: rgba(0,0,0,0.4); padding: 0.5vw 1.6vw; border-radius: 1vw;}
+    .cards-full-row { display: flex; justify-content: space-between; gap: 2vw; height: 34.6vw; }
+    
+    /* 核心修复：移除不兼容的 aspect-ratio，真机完美显示发牌框 */
+    .card-slot-large { flex: 1; height: 100%; border: calc(0.5vw + 1px) solid rgba(58, 90, 64, 0.8); background: rgba(0,0,0,0.15); border-radius: 1.3vw; position: relative; z-index: 10; }
+    .real-card-large { position: absolute; width: 100%; height: 100%; background: #fff; border-radius: 1.3vw; color: #000; display: flex; flex-direction: column; align-items: center; box-shadow: 0.5vw 0.5vw 1.3vw rgba(0,0,0,0.6); z-index: 20; }
+    .card-back-large { background: repeating-linear-gradient(45deg, #e63946, #e63946 10px, #fff 10px, #fff 20px); border: 0.8vw solid #fff;}
+    .c-val-large { position: absolute; top: 1vw; left: 1.6vw; font-size: 4.8vw; font-weight: bold; }
+    .card-center-suit { font-size: 9.3vw; margin-top: 3.3vw;}
+    .red-card { color: #e63946; }
+
+    /* 下注板 */
+    .betting-and-rules-zone { display: flex; gap: 2vw; transition: opacity 0.3s; }
+    .betting-blocks-col { flex: 1; display: flex; flex-direction: column; gap: 1.3vw; }
+    .bet-block { height: 13.3vw; border-radius: 1.3vw; border: 1px solid transparent; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; cursor: pointer; }
+    .block-player { background: rgba(12, 43, 94, 0.9); border-color: #3a86ff; }
+    .block-tie { background: rgba(20, 64, 30, 0.9); border-color: #38b000; }
+    .block-banker { background: rgba(94, 22, 22, 0.9); border-color: #e63946; }
+    .b-title { font-size: 3.7vw; font-weight: bold; color: #fff;}
+    .b-odds { font-size: 2.4vw; color: #adb5bd; margin-top: 0.5vw; }
+    .chip-on-board { position: absolute; right: 2vw; top: 50%; transform: translateY(-50%); background: #f1c40f; color: #000; font-size: 2.9vw; font-weight: bold; padding: 0.5vw 2vw; border-radius: 4vw; box-shadow: 0 0.5vw 1.3vw rgba(0,0,0,0.8); }
+    
+    .rules-sidebar-col { flex: 0.8; background: rgba(0,0,0,0.5); border: 1px dashed #3a5a40; border-radius: 1.3vw; padding: 2vw; display: flex; flex-direction: column; justify-content: center; }
+    .r-head { font-size: 2.9vw; color: #fff; text-align: center; margin-bottom: 1.6vw; font-weight: bold; border-bottom: 1px solid #3a5a40; padding-bottom: 1vw;}
+    .r-line { display: flex; justify-content: space-between; font-size: 2.9vw; color: #ced4da; margin-bottom: 1.3vw; }
+    .r-gold { color: #f1c40f; font-weight: bold; }
+
+    /* 结算大屏 */
+    .bill-overlay-panel { position: absolute; bottom: 0; left: 2.6vw; right: 2.6vw; background: #151617; border-radius: 2.1vw; border: 0.4vw solid #f1c40f; box-shadow: 0 -1.3vw 5.3vw rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; box-sizing: border-box; }
+    .bill-header { padding: 2vw; text-align: center; font-size: 4.2vw; font-weight: bold; color: #fff; border-top-left-radius: 1.6vw; border-top-right-radius: 1.6vw; letter-spacing: 0.3vw;}
+    .bill-win { background: linear-gradient(135deg, #b38f1d, #f1c40f); color: #000 !important; }
+    .bill-lose { background: linear-gradient(135deg, #7f8c8d, #34495e); }
+    .bill-body-scroll { padding: 2vw 3.3vw; max-height: 33vw; overflow-y: auto; box-sizing: border-box;}
+    .bill-line-row { display: flex; justify-content: space-between; align-items: center; padding: 1.8vw 0; border-bottom: 1px solid #2d2f30; width: 100%; }
+    .bill-left-part { flex: 1; overflow: hidden; padding-right: 2.6vw; }
+    .b-item-name { font-size: 3.2vw; font-weight: bold; color: #e2e4e6; }
+    .b-item-desc { font-size: 2.6vw; color: #7f8c8d; margin-top: 0.5vw; }
+    .bill-right-part { flex-shrink: 0; font-size: 4vw; font-weight: bold; text-align: right; }
+    .bill-footer-total { border-top: 1px dashed #f1c40f; padding: 2vw 3.3vw; background: #0e0f10; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 2.1vw; border-bottom-right-radius: 2.1vw;}
+    .bill-footer-total span { font-size: 3.4vw; font-weight: bold; color: #fff; }
+    .total-final-sum { font-size: 5vw !important; }
+    
+    .text-gold { color: #f1c40f; }
+    .text-red { color: #ff4757; }
+    .text-grey { color: #7f8c8d; }
+
+    /* 附加功能面板 */
+    .custom-add-menu { background: rgba(0,0,0,0.4); border: 1px dashed #ff9f43; padding: 1.3vw; border-radius: 1vw; margin-bottom: 1.3vw; display: none;}
+    .menu-open { display: block !important; }
+    .menu-hint { font-size: 2.4vw; color: #ff9f43; margin-bottom: 1vw; text-align: center;}
+    .adder-row { display: flex; justify-content: space-between; gap: 1.3vw;}
+    .add-pill { flex: 1; height: 6.6vw; background: rgba(230, 126, 34, 0.2); border: 1px solid #e67e22; border-radius: 3.3vw; font-size: 2.9vw; font-weight: bold; color: #ff9f43; display: flex; justify-content: center; align-items: center; cursor: pointer;}
+    .pill-clear { background: rgba(127, 140, 141, 0.2); border-color: #7f8c8d; color: #bdc3c7;}
+
+    /* 筹码架 */
+    .chip-scroll-area { width: 100%; height: 14.6vw; overflow-x: auto; margin-bottom: 2vw; }
+    .chip-rack { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 0.8vw;}
+    .chip-wrap { display: inline-block; transition: transform 0.2s; cursor: pointer; }
+    .chip-gear { width: 11.3vw; height: 11.3vw; background: #fff; border-radius: 50%; border: 0.8vw dashed #adb5bd; display: flex; justify-content: center; align-items: center; }
+    .gear-purple { background: #e0b0ff; border-color: #9b5de5; }
+    .gear-purple .chip-core { background: #9b5de5; color: #fff; }
+    .gear-custom { background: #ff9f43; border-color: #e67e22; }
+    .gear-custom .chip-core { background: #ff9f43; color: #fff; }
+    
+    .chip-core { width: 8.6vw; height: 8.6vw; background: #f8f9fa; border-radius: 50%; border: 1px solid #adb5bd; display: flex; justify-content: center; align-items: center; font-weight: bold; color: #212529; font-size: 2.9vw; }
+    .active-chip { transform: translateY(-1vw) scale(1.1); }
+    .active-chip .chip-gear { border-color: #f1c40f; box-shadow: 0 0 2.6vw #f1c40f; }
+    .active-chip .chip-core { background: #f1c40f; color: #000; border-color: #fff; }
+
+    /* 按钮 */
+    .action-row { display: flex; gap: 2.6vw; margin-bottom: 2vw; }
+    .act-btn { flex: 1; height: 8.6vw; font-size: 3.2vw; color: #fff; border-radius: 1vw; border: none; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer;}
+    .btn-grey { background: #6c757d; }
+    .btn-dark { background: #343a40; }
+    .btn-red { background: #e63946; }
+    .mega-btn { width: 100%; height: 12vw; background: #f1c40f; color: #000; border: none; font-size: 4.2vw; font-weight: bold; border-radius: 1.3vw; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 -0.8vw 0 rgba(0,0,0,0.2); cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div id="app" class="page-container">
+  <div class="game-wrapper">
+    
+    <div class="header-bar">
+      <div class="header-left" @click="handleRecharge">
+        <span class="balance-text">余额: ¥{{score}}</span>
+        <div class="add-btn">+</div>
+      </div>
+      <div class="round-badge">第 {{round}} 局</div>
+    </div>
+
+    <div class="card-table-vertical">
+      <div class="side-title dealer-title">
+        <span>庄 BANKER</span> 
+        <span class="hand-badge" v-if="dealerRevealed">[{{dealerHandInfo}}]</span>
+      </div>
+      <div class="cards-full-row">
+        <div v-for="item in [0,1,2]" :key="item" class="card-slot-large">
+          <div v-if="dealerHand[item]" class="real-card-large" :class="[{'card-back-large': !dealerRevealed}, {'red-card': dealerRevealed && dealerHand[item].isRed}]">
+            <template v-if="dealerRevealed">
+              <div class="c-val-large">{{ formatCardValue(dealerHand[item].value) }}</div>
+              <div class="card-center-suit">{{dealerHand[item].icon}}</div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-table-vertical">
+      <div class="side-title player-title">
+        <span>闲 PLAYER</span> 
+        <span class="hand-badge" v-if="playerHandInfo">[{{playerHandInfo}}]</span>
+      </div>
+      <div class="cards-full-row">
+        <div v-for="item in [0,1,2]" :key="item" class="card-slot-large">
+          <div v-if="playerHand[item]" class="real-card-large" :class="{'red-card': playerHand[item].isRed}">
+            <div class="c-val-large">{{ formatCardValue(playerHand[item].value) }}</div>
+            <div class="card-center-suit">{{playerHand[item].icon}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="betting-and-rules-zone" :style="{ opacity: settlementBill ? 0 : 1, 'pointer-events': settlementBill ? 'none' : 'auto' }">
+      <div class="betting-blocks-col">
+        <div class="bet-block block-player" @click="placeBet('ante')">
+          <div class="b-title">底注 ANTE</div>
+          <div class="b-odds">1 : 1</div>
+          <div class="chip-on-board" v-if="anteBet > 0">¥{{anteBet}}</div>
+        </div>
+        <div class="bet-block block-tie" @click="placeBet('pp')">
+          <div class="b-title">对子+ PP</div>
+          <div class="b-odds">最高 1:40</div>
+          <div class="chip-on-board" v-if="pairPlusBet > 0">¥{{pairPlusBet}}</div>
+        </div>
+        <div class="bet-block block-banker">
+          <div class="b-title">加注 PLAY</div>
+          <div class="b-odds">1 : 1</div>
+          <div class="chip-on-board" v-if="playBet > 0">¥{{playBet}}</div>
+        </div>
+      </div>
+      
+      <div class="rules-sidebar-col">
+        <div class="r-head">【对子+】赔付表</div>
+        <div class="r-line"><span>同花顺</span><span class="r-gold">1 : 40</span></div>
+        <div class="r-line"><span>三条</span><span class="r-gold">1 : 30</span></div>
+        <div class="r-line"><span>顺子</span><span class="r-gold">1 : 6</span></div>
+        <div class="r-line"><span>同花</span><span class="r-gold">1 : 3</span></div>
+        <div class="r-line"><span>对子</span><span class="r-gold">1 : 1</span></div>
+      </div>
+    </div>
+
+    <div class="bill-overlay-panel" v-if="settlementBill">
+      <div class="bill-header" :class="settlementBill.isWin ? 'bill-win' : 'bill-lose'">
+        {{settlementBill.title}}
+      </div>
+      <div class="bill-body-scroll">
+        <div v-for="(item, index) in settlementBill.details" :key="index" class="bill-line-row">
+          <div class="bill-left-part">
+            <div class="b-item-name">{{item.name}}</div>
+            <div class="b-item-desc">{{item.desc}}</div>
+          </div>
+          <div class="bill-right-part" :class="item.returnAmt >= 0 ? 'text-gold' : 'text-grey'">
+            {{item.returnAmt >= 0 ? '+' : ''}}{{item.returnAmt}}
+          </div>
+        </div>
+      </div>
+      <div class="bill-footer-total">
+        <span>本局净利润：</span>
+        <span class="total-final-sum" :class="settlementBill.totalWin >= 0 ? 'text-gold' : 'text-red'">¥{{settlementBill.totalWin}}</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="safe-bottom-console">
+    <template v-if="gameState === 'betting'">
+      <div class="custom-add-menu" :class="{ 'menu-open': showCustomMenu }">
+        <div class="menu-hint">自由堆叠自定义筹码：</div>
+        <div class="adder-row">
+          <div class="add-pill" @click="addCustomValue(100)">+100</div>
+          <div class="add-pill" @click="addCustomValue(1000)">+1k</div>
+          <div class="add-pill" @click="addCustomValue(10000)">+1w</div>
+          <div class="add-pill" @click="addCustomValue(100000)">+10w</div>
+          <div class="add-pill pill-clear" @click="clearCustomValue">重置0</div>
+        </div>
+      </div>
+
+      <div class="chip-scroll-area">
+        <div class="chip-rack">
+          <div v-for="item in chips" :key="item" class="chip-wrap" :class="{ 'active-chip': selectedChip === item }" @click="selectChip(item)">
+            <div class="chip-gear" :class="{ 'gear-purple': item >= 5000 }">
+              <div class="chip-core" :style="{ 'font-size': item >= 10000 ? '2.5vw' : '3.2vw' }">{{item}}</div>
+            </div>
+          </div>
+          
+          <div class="chip-wrap" :class="{ 'active-chip': selectedChip === customChipVal && customChipVal > 0 }" @click="selectChip('custom')">
+            <div class="chip-gear gear-custom">
+              <div class="chip-core" :style="{ 'font-size': customChipVal === 0 ? '2.5vw' : '2vw' }">
+                {{customChipVal === 0 ? '双击自定义' : customChipVal}}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="act-btn btn-grey" @click="clearBets">清空下注</button>
+        <button class="act-btn btn-dark" @click="repeatBet">重复</button>
+        <button class="act-btn btn-red" @click="doubleBet">加倍</button>
+      </div>
+      <button class="mega-btn" @click="dealCards">开始发牌</button>
+    </template>
+
+    <template v-if="gameState === 'choice'">
+      <div class="action-row" style="padding-top: 1.5vw;">
+        <button class="mega-btn btn-grey" style="flex:1; margin-right:2.6vw;" @click="foldHand">弃牌认输</button>
+        <button class="mega-btn btn-red" style="flex:1;" @click="playHand">加倍决战</button>
+      </div>
+    </template>
+
+    <template v-if="gameState === 'finished'">
+      <button class="mega-btn" style="margin-top: 1.5vw;" @click="resetGame">准备下一局</button>
+    </template>
+  </div>
+</div>
+
+<script>
+// ==================== 核心算法组件 (原 gameUtils 核心算法平移补齐) ====================
+const gameUtils = {
+  createDeck() {
+    const suits = [
+      { icon: '♠', isRed: false, name: 'S' },
+      { icon: '♥', isRed: true, name: 'H' },
+      { icon: '♦', isRed: true, name: 'D' },
+      { icon: '♣', isRed: false, name: 'C' }
+    ];
+    let deck = [];
+    for (let v = 2; v <= 14; v++) {
+      for (let s of suits) {
+        deck.push({ value: v, icon: s.icon, isRed: s.isRed, suit: s.name });
+      }
+    }
+    return deck;
+  },
+  shuffle(deck) {
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+  },
+  evaluateHand(hand) {
+    let sorted = [...hand].sort((a, b) => b.value - a.value);
+    let isFlush = sorted[0].suit === sorted[1].suit && sorted[1].suit === sorted[2].suit;
+    let isStraight = false;
+    
+    if (sorted[0].value - sorted[1].value === 1 && sorted[1].value - sorted[2].value === 1) {
+      isStraight = true;
+    }
+    if (sorted[0].value === 14 && sorted[1].value === 3 && sorted[2].value === 2) {
+      isStraight = true; // A-2-3 顺子
+    }
+    let isThreeOfAKind = sorted[0].value === sorted[1].value && sorted[1].value === sorted[2].value;
+    let isPair = sorted[0].value === sorted[1].value || sorted[1].value === sorted[2].value || sorted[0].value === sorted[2].value;
+
+    if (isStraight && isFlush) return { rank: 6, name: '同花顺', value: sorted };
+    if (isThreeOfAKind) return { rank: 5, name: '三条', value: sorted };
+    if (isStraight) return { rank: 4, name: '顺子', value: sorted };
+    if (isFlush) return { rank: 3, name: '同花', value: sorted };
+    if (isPair) return { rank: 2, name: '对子', value: sorted };
+    return { rank: 1, name: '单牌', value: sorted };
+  },
+  dealerQualifies(dealer) {
+    let info = this.evaluateHand(dealer);
+    if (info.rank > 1) return true;
+    return info.value[0].value >= 12; // 庄家需要 Q 或更高牌型才有资格
+  },
+  compareHands(player, dealer) {
+    let pInfo = this.evaluateHand(player);
+    let dInfo = this.evaluateHand(dealer);
+    if (pInfo.rank !== dInfo.rank) return pInfo.rank > dInfo.rank ? 1 : -1;
+    for (let i = 0; i < 3; i++) {
+      if (pInfo.value[i].value !== dInfo.value[i].value) {
+        return pInfo.value[i].value > dInfo.value[i].value ? 1 : -1;
+      }
+    }
+    return 0;
+  },
+  getPairPlusBonus(player, bet) {
+    let info = this.evaluateHand(player);
+    let payouts = { 6: 40, 5: 30, 4: 6, 3: 3, 2: 1 };
+    if (payouts[info.rank]) {
+      return { win: true, amount: bet * payouts[info.rank] };
+    }
+    return { win: false, amount: 0 };
+  }
+};
+
+// ==================== Vue 页面逻辑控制器 ====================
+const { createApp } = Vue;
+
+createApp({
+  data() {
+    return {
+      score: 580000,
+      round: 1,
+      totalBet: 0,
+      anteBet: 0,
+      playBet: 0,
+      pairPlusBet: 0,
+      lastAnteBet: 0,
+      lastPairPlusBet: 0,
+      gameState: 'betting',
+      chips: [100, 500, 1000, 5000, 10000],
+      selectedChip: 100,
+      customChipVal: 0,
+      showCustomMenu: false,
+      playerHand: [],
+      dealerHand: [],
+      playerHandInfo: '',
+      dealerHandInfo: '',
+      dealerRevealed: false,
+      settlementBill: null,
+      lastTapTime: 0
+    }
+  },
+  methods: {
+    formatCardValue(val) {
+      if (val === 14) return 'A';
+      if (val === 13) return 'K';
+      if (val === 12) return 'Q';
+      if (val === 11) return 'J';
+      return val;
+    },
+    handleRecharge() {
+      if (this.gameState !== 'betting') return;
+      const res = prompt("请输入充值金额:", "10000");
+      let amt = parseInt(res);
+      if (!isNaN(amt) && amt > 0) {
+        this.score += amt;
+        alert("充值成功！");
+      } else if (res !== null) {
+        alert("金额无效");
+      }
+    },
+    selectChip(val) {
+      if (this.gameState !== 'betting') return;
+      if (val === 'custom') {
+        let currentTime = new Date().getTime();
+        let gap = currentTime - this.lastTapTime;
+        this.lastTapTime = currentTime;
+
+        if (gap < 300) { // 双击打开菜单
+          this.showCustomMenu = true;
+          this.vibrate('medium');
+        } else { // 单击选中
+          if (this.customChipVal > 0) {
+            this.selectedChip = this.customChipVal;
+            this.showCustomMenu = false;
+          } else {
+            alert('请【双击】自定义筹码设置金额');
+          }
+        }
+      } else {
+        this.selectedChip = parseInt(val);
+        this.showCustomMenu = false;
+      }
+    },
+    addCustomValue(addVal) {
+      this.customChipVal += addVal;
+      this.selectedChip = this.customChipVal;
+      this.vibrate('light');
+    },
+    clearCustomValue() {
+      this.customChipVal = 0;
+      this.selectedChip = 100;
+    },
+    placeBet(zone) {
+      if (this.gameState !== 'betting') return;
+      let amount = this.selectedChip;
+
+      if (amount <= 0) { alert('请先设置有效筹码金额'); return; }
+      if (this.score < amount) { alert('余额不足'); return; }
+
+      if (zone === 'ante') {
+        this.anteBet += amount;
+      } else if (zone === 'pp') {
+        this.pairPlusBet += amount;
+      }
+      this.score -= amount;
+      this.totalBet += amount;
+      this.vibrate('light');
+    },
+    clearBets() {
+      if (this.gameState !== 'betting') return;
+      this.score += this.totalBet;
+      this.anteBet = 0;
+      this.pairPlusBet = 0;
+      this.playBet = 0;
+      this.totalBet = 0;
+    },
+    repeatBet() {
+      if (this.gameState !== 'betting') return;
+      let totalNeeded = this.lastAnteBet + this.lastPairPlusBet;
+      if (totalNeeded === 0) { alert('没有上一局记录'); return; }
+      if (this.score < totalNeeded) { alert('余额不足'); return; }
+      this.clearBets();
+      this.anteBet = this.lastAnteBet;
+      this.pairPlusBet = this.lastPairPlusBet;
+      this.score -= totalNeeded;
+      this.totalBet = totalNeeded;
+    },
+    doubleBet() {
+      if (this.gameState !== 'betting') return;
+      if (this.totalBet === 0) return;
+      if (this.score < this.totalBet) { alert('余额不足'); return; }
+      this.score -= this.totalBet;
+      this.anteBet *= 2;
+      this.pairPlusBet *= 2;
+      this.totalBet *= 2;
+    },
+    dealCards() {
+      if (this.anteBet === 0) { alert('请下注底注(ANTE)'); return; }
+      this.lastAnteBet = this.anteBet;
+      this.lastPairPlusBet = this.pairPlusBet;
+      this.showCustomMenu = false;
+
+      let deck = gameUtils.createDeck();
+      deck = gameUtils.shuffle(deck);
+
+      this.playerHand = [deck[0], deck[1], deck[2]];
+      this.dealerHand = [deck[3], deck[4], deck[5]];
+      this.playerHandInfo = gameUtils.evaluateHand(this.playerHand).name;
+      this.gameState = 'choice';
+    },
+    playHand() {
+      let ante = this.anteBet;
+      if (this.score < ante) { alert('余额不足，自动弃牌'); this.foldHand(); return; }
+      this.playBet = ante;
+      this.score -= ante;
+      this.totalBet += ante;
+      this.settleGame();
+    },
+    foldHand() {
+      this.settlementBill = {
+        title: '玩家弃牌认输',
+        isWin: false,
+        details: [
+          { name: '底注池 (ANTE)', desc: '折叠扣除', returnAmt: -this.anteBet },
+          { name: '对子+池 (PP)', desc: '折叠扣除', returnAmt: -this.pairPlusBet }
+        ],
+        totalWin: -this.totalBet
+      };
+      this.gameState = 'finished';
+    },
+    settleGame() {
+      let player = this.playerHand;
+      let dealer = this.dealerHand;
+      let dQualifies = gameUtils.dealerQualifies(dealer);
+      let dInfo = gameUtils.evaluateHand(dealer);
+      let comparison = gameUtils.compareHands(player, dealer);
+      let winAmount = 0;
+      let billDetails = [];
+
+      if (this.anteBet > 0) {
+        if (!dQualifies) {
+          winAmount += this.playBet + this.anteBet * 2;
+          billDetails.push({ name: '底注对决 (ANTE)', desc: `庄无资格(${dInfo.name})`, returnAmt: this.anteBet });
+          billDetails.push({ name: '加注对决 (PLAY)', desc: '退回本金', returnAmt: 0 });
+        } else {
+          if (comparison === 1) {
+            winAmount += this.anteBet * 2 + this.playBet * 2;
+            billDetails.push({ name: '底注对决 (ANTE)', desc: '闲家牌大 胜出', returnAmt: this.anteBet });
+            billDetails.push({ name: '加注对决 (PLAY)', desc: '闲家牌大 胜出', returnAmt: this.playBet });
+          } else if (comparison === -1) {
+            billDetails.push({ name: '底注对决 (ANTE)', desc: `庄家牌大(${dInfo.name})`, returnAmt: -this.anteBet });
+            billDetails.push({ name: '加注对决 (PLAY)', desc: `庄家牌大(${dInfo.name})`, returnAmt: -this.playBet });
+          } else {
+            winAmount += this.anteBet + this.playBet;
+            billDetails.push({ name: '主游戏对决', desc: '双方平手', returnAmt: 0 });
+          }
+        }
+      }
+
+      if (this.pairPlusBet > 0) {
+        let ppResult = gameUtils.getPairPlusBonus(player, this.pairPlusBet);
+        if (ppResult.win) {
+          winAmount += this.pairPlusBet + ppResult.amount;
+          billDetails.push({ name: '对子+额外池 (PP)', desc: `中【${this.playerHandInfo}】大奖`, returnAmt: ppResult.amount });
+        } else {
+          billDetails.push({ name: '对子+额外池 (PP)', desc: '未中奖', returnAmt: -this.pairPlusBet });
+        }
+      }
+
+      let totalNetProfit = winAmount - this.totalBet;
+      this.dealerHandInfo = dInfo.name;
+      this.dealerRevealed = true;
+      this.score += winAmount;
+      this.gameState = 'finished';
+      this.settlementBill = {
+        title: totalNetProfit >= 0 ? '🏆 恭喜赢取奖金' : '📉 庄家本次胜出',
+        isWin: totalNetProfit >= 0,
+        details: billDetails,
+        totalWin: totalNetProfit
+      };
+    },
+    resetGame() {
+      this.round += 1;
+      this.anteBet = 0;
+      this.playBet = 0;
+      this.pairPlusBet = 0;
+      this.totalBet = 0;
+      this.gameState = 'betting';
+      this.playerHand = [];
+      this.dealerHand = [];
+      this.playerHandInfo = '';
+      this.dealerHandInfo = '';
+      this.dealerRevealed = false;
+      this.settlementBill = null;
+    },
+    vibrate(type) {
+      if (navigator.vibrate) {
+        navigator.vibrate(type === 'medium' ? 20 : 10);
+      }
+    }
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
