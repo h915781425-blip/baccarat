@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>百家乐/三张牌游戏测试版</title>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <title>富贵三公游戏测试版</title>
+  <script src="https://cdn.staticfile.net/vue/3.3.4/vue.global.min.js"></script>
   
   <style>
-    /* 将小程序的 rpx 转化为响应式的 vw/vh 适配移动端 */
     :root {
       --rpx: 0.1333vw;
     }
@@ -15,7 +14,8 @@
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { background-color: #0b1c14; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
 
-    .page-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; padding-top: calc(10.6vw + 10px); box-sizing: border-box; }
+    /* 【已修复】使用全新的 100dvh 动态高度自适应浏览器工具栏，同时大幅缩减顶部刘海预留空白，完美展现底部“开始发牌”大按钮 */
+    .page-container { display: flex; flex-direction: column; height: 100dvh; width: 100vw; padding-top: 4vw; box-sizing: border-box; }
     .game-wrapper { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 2.6vw; box-sizing: border-box; position: relative; }
     .safe-bottom-console { flex-shrink: 0; background: #08140e; border-top: calc(0.5vw + 1px) solid #1a3c26; padding: 2vw 3.3vw calc(env(safe-area-inset-bottom) + 2vw) 3.3vw; }
 
@@ -36,7 +36,6 @@
     .hand-badge { color: #f1c40f; font-size: 3.2vw; background: rgba(0,0,0,0.4); padding: 0.5vw 1.6vw; border-radius: 1vw;}
     .cards-full-row { display: flex; justify-content: space-between; gap: 2vw; height: 34.6vw; }
     
-    /* 核心修复：移除不兼容的 aspect-ratio，真机完美显示发牌框 */
     .card-slot-large { flex: 1; height: 100%; border: calc(0.5vw + 1px) solid rgba(58, 90, 64, 0.8); background: rgba(0,0,0,0.15); border-radius: 1.3vw; position: relative; z-index: 10; }
     .real-card-large { position: absolute; width: 100%; height: 100%; background: #fff; border-radius: 1.3vw; color: #000; display: flex; flex-direction: column; align-items: center; box-shadow: 0.5vw 0.5vw 1.3vw rgba(0,0,0,0.6); z-index: 20; }
     .card-back-large { background: repeating-linear-gradient(45deg, #e63946, #e63946 10px, #fff 10px, #fff 20px); border: 0.8vw solid #fff;}
@@ -261,7 +260,7 @@
 </div>
 
 <script>
-// ==================== 核心算法组件 (原 gameUtils 核心算法平移补齐) ====================
+// ==================== 核心算法组件 ====================
 const gameUtils = {
   createDeck() {
     const suits = [
@@ -294,7 +293,7 @@ const gameUtils = {
       isStraight = true;
     }
     if (sorted[0].value === 14 && sorted[1].value === 3 && sorted[2].value === 2) {
-      isStraight = true; // A-2-3 顺子
+      isStraight = true;
     }
     let isThreeOfAKind = sorted[0].value === sorted[1].value && sorted[1].value === sorted[2].value;
     let isPair = sorted[0].value === sorted[1].value || sorted[1].value === sorted[2].value || sorted[0].value === sorted[2].value;
@@ -309,7 +308,7 @@ const gameUtils = {
   dealerQualifies(dealer) {
     let info = this.evaluateHand(dealer);
     if (info.rank > 1) return true;
-    return info.value[0].value >= 12; // 庄家需要 Q 或更高牌型才有资格
+    return info.value[0].value >= 12;
   },
   compareHands(player, dealer) {
     let pInfo = this.evaluateHand(player);
@@ -386,10 +385,10 @@ createApp({
         let gap = currentTime - this.lastTapTime;
         this.lastTapTime = currentTime;
 
-        if (gap < 300) { // 双击打开菜单
+        if (gap < 300) {
           this.showCustomMenu = true;
           this.vibrate('medium');
-        } else { // 单击选中
+        } else {
           if (this.customChipVal > 0) {
             this.selectedChip = this.customChipVal;
             this.showCustomMenu = false;
