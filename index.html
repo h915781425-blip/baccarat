@@ -13,7 +13,7 @@
     /* 【终极锁屏】彻底禁止浏览器上下拖拽滑动，将整个网页变成一个铁桶 */
     html, body { 
       background-color: #0b1c14; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      height: 100%; width: 100%; overflow: hidden; position: fixed; top: 0; left: 0; 
+      height: 100%; width: 100%; overflow: hidden; position: fixed; top: 0; left: 0;
     }
 
     /* 容器绝对定位铺满，顶部留出足够的安全距离防止贴边 */
@@ -21,7 +21,7 @@
       position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
       display: flex; flex-direction: column; 
       padding-top: max(2.5vh, env(safe-area-inset-top, 20px)); 
-      overflow: hidden; 
+      overflow: hidden;
     }
 
     /* 【弹簧区域】利用 flex: 1 动态挤压高度。屏幕矮它就压缩，屏幕高它就拉伸，永远刚好 1 屏 */
@@ -34,7 +34,7 @@
     /* 底部控制台：高度定死，绝不参与压缩，留出底部安全区 */
     .safe-bottom-console { 
       flex-shrink: 0; background: #08140e; border-top: 1px solid #1a3c26; 
-      padding: 1.5vh 3.3vw max(2vh, env(safe-area-inset-bottom, 15px)) 3.3vw; z-index: 100; 
+      padding: 1.5vh 3.3vw max(2vh, env(safe-area-inset-bottom, 15px)) 3.3vw; z-index: 100;
     }
 
     /* 中心对齐黑科技 */
@@ -98,6 +98,8 @@
     .text-gold { color: #f1c40f; }
     .text-red { color: #ff4757; }
     .text-grey { color: #7f8c8d; }
+    /* 新增：正负金额的白色字样式 */
+    .text-white { color: #ffffff; }
 
     /* 附加功能面板 */
     .custom-add-menu { background: rgba(0,0,0,0.4); border: 1px dashed #ff9f43; padding: 1vh; border-radius: 1vw; margin-bottom: 1vh; display: none;}
@@ -215,14 +217,14 @@
             <div class="b-item-name">{{item.name}}</div>
             <div class="b-item-desc">{{item.desc}}</div>
           </div>
-          <div class="bill-right-part" :class="item.returnAmt >= 0 ? 'text-gold' : 'text-grey'">
-            {{item.returnAmt >= 0 ? '+' : ''}}{{item.returnAmt}}
+          <div class="bill-right-part" :class="item.returnAmt > 0 ? 'text-red' : (item.returnAmt === 0 ? 'text-grey' : 'text-white')">
+            {{item.returnAmt > 0 ? '+' : ''}}{{item.returnAmt}}
           </div>
         </div>
       </div>
       <div class="bill-footer-total">
         <span>本局净利润：</span>
-        <span class="total-final-sum" :class="settlementBill.totalWin >= 0 ? 'text-gold' : 'text-red'">¥{{settlementBill.totalWin}}</span>
+        <span class="total-final-sum" :class="settlementBill.totalWin > 0 ? 'text-red' : 'text-white'">¥{{settlementBill.totalWin}}</span>
       </div>
     </div>
 
@@ -309,38 +311,61 @@ const gameUtils = {
     let sorted = [...hand].sort((a, b) => b.value - a.value);
     let isFlush = sorted[0].suit === sorted[1].suit && sorted[1].suit === sorted[2].suit;
     let isStraight = false;
+    let isA23 = false;
     
     if (sorted[0].value - sorted[1].value === 1 && sorted[1].value - sorted[2].value === 1) {
       isStraight = true;
     }
+    // 特殊处理 A-2-3 顺子
     if (sorted[0].value === 14 && sorted[1].value === 3 && sorted[2].value === 2) {
       isStraight = true;
+      isA23 = true;
     }
     let isThreeOfAKind = sorted[0].value === sorted[1].value && sorted[1].value === sorted[2].value;
-    let isPair = sorted[0].value === sorted[1].value || sorted[1].value === sorted[2].value || sorted[0].value === sorted[2].value;
+    
+    // 【修改点】：精确计算 Tiebreaker（决胜数组），确保对子优先比对子面值
+    let isPair = false;
+    let tiebreaker = [];
 
-    if (isStraight && isFlush) return { rank: 6, name: '同花顺', value: sorted };
-    if (isThreeOfAKind) return { rank: 5, name: '三条', value: sorted };
-    if (isStraight) return { rank: 4, name: '顺子', value: sorted };
-    if (isFlush) return { rank: 3, name: '同花', value: sorted };
-    if (isPair) return { rank: 2, name: '对子', value: sorted };
-    return { rank: 1, name: '单牌', value: sorted };
+    if (isThreeOfAKind) {
+        tiebreaker = [sorted[0].value]; // 只需要比三条的面值
+    } else if (sorted[0].value === sorted[1].value) {
+        isPair = true;
+        tiebreaker = [sorted[0].value, sorted[2].value]; // 第一位是单张对子的面值，第二位是散牌
+    } else if (sorted[1].value === sorted[2].value) {
+        isPair = true;
+        tiebreaker = [sorted[1].value, sorted[0].value]; // 同上
+    }
+
+    let defaultTiebreaker = isA23 ? [3, 2, 1] : [sorted[0].value, sorted[1].value, sorted[2].value];
+
+    if (isStraight && isFlush) return { rank: 6, name: '同花顺', value: sorted, tb: defaultTiebreaker };
+    if (isThreeOfAKind) return { rank: 5, name: '三条', value: sorted, tb: tiebreaker };
+    if (isStraight) return { rank: 4, name: '顺子', value: sorted, tb: defaultTiebreaker };
+    if (isFlush) return { rank: 3, name: '同花', value: sorted, tb: defaultTiebreaker };
+    if (isPair) return { rank: 2, name: '对子', value: sorted, tb: tiebreaker };
+    
+    return { rank: 1, name: '单牌', value: sorted, tb: defaultTiebreaker };
   },
   dealerQualifies(dealer) {
     let info = this.evaluateHand(dealer);
     if (info.rank > 1) return true;
-    return info.value[0].value >= 12;
+    return info.value[0].value >= 12; // 庄家至少需要 Q 才能成局
   },
   compareHands(player, dealer) {
     let pInfo = this.evaluateHand(player);
     let dInfo = this.evaluateHand(dealer);
+    
+    // 牌型不同，直接比牌型权重
     if (pInfo.rank !== dInfo.rank) return pInfo.rank > dInfo.rank ? 1 : -1;
-    for (let i = 0; i < 3; i++) {
-      if (pInfo.value[i].value !== dInfo.value[i].value) {
-        return pInfo.value[i].value > dInfo.value[i].value ? 1 : -1;
+    
+    // 【修改点】：牌型相同，使用严格的 Tiebreaker 顺序对比（完美解决对子比牌Bug）
+    for (let i = 0; i < pInfo.tb.length; i++) {
+      if (pInfo.tb[i] !== dInfo.tb[i]) {
+        return pInfo.tb[i] > dInfo.tb[i] ? 1 : -1;
       }
     }
-    return 0;
+    return 0; // 完全平局
   },
   getPairPlusBonus(player, bet) {
     let info = this.evaluateHand(player);
@@ -354,7 +379,6 @@ const gameUtils = {
 
 // ==================== Vue 页面逻辑控制器 ====================
 const { createApp } = Vue;
-
 createApp({
   data() {
     return {
