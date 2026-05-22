@@ -3,20 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>富贵三宝游戏测试版</title>
+  <title>百家乐/三张牌游戏测试版</title>
   <script src="https://cdn.staticfile.net/vue/3.3.4/vue.global.min.js"></script>
   
   <style>
     :root { --rpx: 0.1333vw; }
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     
-    /* 【终极锁屏】彻底禁止浏览器上下拖拽滑动，将整个网页变成一个铁桶 */
     html, body { 
       background-color: #0b1c14; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
       height: 100%; width: 100%; overflow: hidden; position: fixed; top: 0; left: 0;
     }
 
-    /* 容器绝对定位铺满，顶部留出足够的安全距离防止贴边 */
     .page-container { 
       position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
       display: flex; flex-direction: column; 
@@ -24,29 +22,23 @@
       overflow: hidden;
     }
 
-    /* 【弹簧区域】利用 flex: 1 动态挤压高度。屏幕矮它就压缩，屏幕高它就拉伸，永远刚好 1 屏 */
     .game-wrapper { 
       flex: 1; display: flex; flex-direction: column; 
-      padding: 1vh 2.6vw; position: relative; 
-      min-height: 0; /* 允许内部元素无限压缩而不溢出 */
+      padding: 1vh 2.6vw; position: relative; min-height: 0; 
     }
     
-    /* 底部控制台：高度定死，绝不参与压缩，留出底部安全区 */
     .safe-bottom-console { 
       flex-shrink: 0; background: #08140e; border-top: 1px solid #1a3c26; 
       padding: 1.5vh 3.3vw max(2vh, env(safe-area-inset-bottom, 15px)) 3.3vw; z-index: 100;
     }
 
-    /* 中心对齐黑科技 */
     .center-text { display: flex !important; justify-content: center !important; align-items: center !important; width: 100%; height: 100%; line-height: 1 !important; text-align: center; }
 
-    /* 顶部栏 */
     .header-bar { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; z-index: 10; margin-bottom: 1.5vh; }
     .header-left { display: flex; align-items: center; color: #f1c40f; font-weight: bold; font-size: 4.2vw; background: rgba(0,0,0,0.4); padding: 1.3vw 2.6vw; border-radius: 4vw; cursor: pointer; }
     .add-btn { background: #f1c40f; color: #000; width: 5.8vw; height: 5.8vw; border-radius: 50%; margin-left: 2vw; font-size: 4.2vw; font-weight: bold; display: flex; justify-content: center; align-items: center; line-height: 1;}
     .round-badge { color: #fff; background: rgba(255,255,255,0.2); padding: 0.8vw 3.2vw; border-radius: 2.6vw; font-size: 3.4vw; }
 
-    /* 牌桌区 - 改为弹性伸缩，高度自适应 */
     .card-table-vertical { 
       flex: 1; display: flex; flex-direction: column; background: #113122; border: 1px solid #a3b18a; 
       border-radius: 1.6vw; padding: 1.5vh 2vw; transition: opacity 0.3s; margin-bottom: 1.5vh; min-height: 0;
@@ -64,7 +56,6 @@
     .card-center-suit { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); font-size: 10vw;}
     .red-card { color: #e63946; }
 
-    /* 下注板 - 改为弹性伸缩 */
     .betting-and-rules-zone { flex: 1.2; display: flex; gap: 2vw; transition: opacity 0.3s; min-height: 0; }
     .betting-blocks-col { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 1vh; }
     .bet-block { flex: 1; border-radius: 1.3vw; border: 1px solid transparent; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; cursor: pointer; }
@@ -80,7 +71,6 @@
     .r-line { display: flex; justify-content: space-between; font-size: 2.8vw; color: #ced4da; }
     .r-gold { color: #f1c40f; font-weight: bold; }
 
-    /* 结算大屏 */
     .bill-overlay-panel { position: absolute; bottom: 0; left: 0; right: 0; background: #151617; border-radius: 2.1vw; border: 0.4vw solid #f1c40f; box-shadow: 0 -1.3vw 5.3vw rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; box-sizing: border-box; max-height: 100%; }
     .bill-header { padding: 1.5vh; text-align: center; font-size: 4.2vw; font-weight: bold; color: #fff; border-top-left-radius: 1.6vw; border-top-right-radius: 1.6vw; letter-spacing: 0.3vw; flex-shrink: 0;}
     .bill-win { background: linear-gradient(135deg, #b38f1d, #f1c40f); color: #000 !important; }
@@ -94,14 +84,7 @@
     .bill-footer-total { flex-shrink: 0; border-top: 1px dashed #f1c40f; padding: 1.5vh 3.3vw; background: #0e0f10; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 2.1vw; border-bottom-right-radius: 2.1vw;}
     .bill-footer-total span { font-size: 3.4vw; font-weight: bold; color: #fff; }
     .total-final-sum { font-size: 5vw !important; }
-    
-    .text-gold { color: #f1c40f; }
-    .text-red { color: #ff4757; }
-    .text-grey { color: #7f8c8d; }
-    /* 新增：正负金额的白色字样式 */
-    .text-white { color: #ffffff; }
 
-    /* 附加功能面板 */
     .custom-add-menu { background: rgba(0,0,0,0.4); border: 1px dashed #ff9f43; padding: 1vh; border-radius: 1vw; margin-bottom: 1vh; display: none;}
     .menu-open { display: block !important; }
     .menu-hint { font-size: 2.6vw; color: #ff9f43; margin-bottom: 1vh; text-align: center;}
@@ -109,7 +92,6 @@
     .add-pill { flex: 1; height: 4.5vh; min-height: 30px; background: rgba(230, 126, 34, 0.2); border: 1px solid #e67e22; border-radius: 3.3vw; font-size: 3vw; font-weight: bold; color: #ff9f43; display: flex; justify-content: center; align-items: center; cursor: pointer;}
     .pill-clear { background: rgba(127, 140, 141, 0.2); border-color: #7f8c8d; color: #bdc3c7;}
 
-    /* 筹码架 */
     .chip-scroll-area { width: 100%; height: 15vw; overflow-x: auto; margin-bottom: 1.5vh; }
     .chip-rack { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 0.8vw;}
     .chip-wrap { display: inline-block; transition: transform 0.2s; cursor: pointer; }
@@ -124,7 +106,6 @@
     .active-chip .chip-gear { border-color: #f1c40f; box-shadow: 0 0 2.6vw #f1c40f; }
     .active-chip .chip-core { background: #f1c40f; color: #000; border-color: #fff; }
 
-    /* 底部按钮区使用动态高 */
     .action-row { display: flex; gap: 2.6vw; margin-bottom: 1.5vh; }
     .act-btn { flex: 1; height: 5.5vh; min-height: 35px; font-size: 3.5vw; color: #fff; border-radius: 1vw; border: none; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer;}
     .btn-grey { background: #6c757d; }
@@ -217,14 +198,16 @@
             <div class="b-item-name">{{item.name}}</div>
             <div class="b-item-desc">{{item.desc}}</div>
           </div>
-          <div class="bill-right-part" :class="item.returnAmt > 0 ? 'text-red' : (item.returnAmt === 0 ? 'text-grey' : 'text-white')">
-            {{item.returnAmt > 0 ? '+' : ''}}{{item.returnAmt}}
+          <div class="bill-right-part" :style="{ color: item.returnAmt >= 0 ? '#f1c40f' : '#7f8c8d' }">
+            {{item.returnAmt >= 0 ? '+' : ''}}{{item.returnAmt}}
           </div>
         </div>
       </div>
       <div class="bill-footer-total">
         <span>本局净利润：</span>
-        <span class="total-final-sum" :class="settlementBill.totalWin > 0 ? 'text-red' : 'text-white'">¥{{settlementBill.totalWin}}</span>
+        <span class="total-final-sum" :style="{ color: settlementBill.totalWin > 0 ? '#ff4757' : '#ffffff' }">
+          {{settlementBill.totalWin > 0 ? '+' : ''}}¥{{settlementBill.totalWin}}
+        </span>
       </div>
     </div>
 
@@ -316,25 +299,23 @@ const gameUtils = {
     if (sorted[0].value - sorted[1].value === 1 && sorted[1].value - sorted[2].value === 1) {
       isStraight = true;
     }
-    // 特殊处理 A-2-3 顺子
     if (sorted[0].value === 14 && sorted[1].value === 3 && sorted[2].value === 2) {
       isStraight = true;
       isA23 = true;
     }
     let isThreeOfAKind = sorted[0].value === sorted[1].value && sorted[1].value === sorted[2].value;
     
-    // 【修改点】：精确计算 Tiebreaker（决胜数组），确保对子优先比对子面值
     let isPair = false;
     let tiebreaker = [];
 
     if (isThreeOfAKind) {
-        tiebreaker = [sorted[0].value]; // 只需要比三条的面值
+        tiebreaker = [sorted[0].value]; 
     } else if (sorted[0].value === sorted[1].value) {
         isPair = true;
-        tiebreaker = [sorted[0].value, sorted[2].value]; // 第一位是单张对子的面值，第二位是散牌
+        tiebreaker = [sorted[0].value, sorted[2].value]; 
     } else if (sorted[1].value === sorted[2].value) {
         isPair = true;
-        tiebreaker = [sorted[1].value, sorted[0].value]; // 同上
+        tiebreaker = [sorted[1].value, sorted[0].value]; 
     }
 
     let defaultTiebreaker = isA23 ? [3, 2, 1] : [sorted[0].value, sorted[1].value, sorted[2].value];
@@ -350,22 +331,20 @@ const gameUtils = {
   dealerQualifies(dealer) {
     let info = this.evaluateHand(dealer);
     if (info.rank > 1) return true;
-    return info.value[0].value >= 12; // 庄家至少需要 Q 才能成局
+    return info.value[0].value >= 12; 
   },
   compareHands(player, dealer) {
     let pInfo = this.evaluateHand(player);
     let dInfo = this.evaluateHand(dealer);
     
-    // 牌型不同，直接比牌型权重
     if (pInfo.rank !== dInfo.rank) return pInfo.rank > dInfo.rank ? 1 : -1;
     
-    // 【修改点】：牌型相同，使用严格的 Tiebreaker 顺序对比（完美解决对子比牌Bug）
     for (let i = 0; i < pInfo.tb.length; i++) {
       if (pInfo.tb[i] !== dInfo.tb[i]) {
         return pInfo.tb[i] > dInfo.tb[i] ? 1 : -1;
       }
     }
-    return 0; // 完全平局
+    return 0; 
   },
   getPairPlusBonus(player, bet) {
     let info = this.evaluateHand(player);
@@ -377,7 +356,6 @@ const gameUtils = {
   }
 };
 
-// ==================== Vue 页面逻辑控制器 ====================
 const { createApp } = Vue;
 createApp({
   data() {
